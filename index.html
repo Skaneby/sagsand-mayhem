@@ -2,10 +2,19 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Sågsand Mayhem — Nivå 1: Kikarsikte</title>
 <style>
   html, body { margin:0; padding:0; overflow:hidden; background:#0a1a2a; font-family:'Georgia',serif; height:100%; }
-  #scene { width:100vw; height:100vh; position:relative; cursor:crosshair; }
+  #scene { width:100vw; height:100vh; position:relative; cursor:crosshair; touch-action:none; }
+  #zoombtn {
+    position:absolute; bottom:70px; right:20px; z-index:15;
+    width:64px; height:64px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.7); background:rgba(10,20,30,0.5);
+    color:#fff; font-size:26px; display:flex; align-items:center; justify-content:center;
+    user-select:none; -webkit-user-select:none; touch-action:manipulation;
+  }
+  #zoombtn.active { border-color:#e8543a; background:rgba(232,84,58,0.35); }
   canvas { display:block; }
 
   #hud { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
@@ -47,14 +56,15 @@
       <div id="targets"></div>
     </div>
     <div id="msg"></div>
-    <div id="hint">Rör musen för att sikta &nbsp;·&nbsp; Högerknapp eller Shift = kikarsikte &nbsp;·&nbsp; Klicka för att skjuta</div>
+    <div id="hint">Dra med fingret för att sikta &nbsp;·&nbsp; Tryck snabbt för att skjuta &nbsp;·&nbsp; &#8981;-knappen eller nyp = kikarsikte</div>
   </div>
   <div id="crosshair"><div class="ring"></div><div class="dot"></div></div>
   <div id="zoomlabel">ZOOM</div>
+  <div id="zoombtn">&#8981;</div>
   <div id="startScreen">
     <h2>Sågsand Mayhem</h2>
     <h1>Nivå 1 — Kikarsikte</h1>
-    <p style="opacity:0.75; max-width:400px; line-height:1.5;">Fem vattenskotrar stör lugnet vid viken. Rör musen för att sikta, håll höger musknapp eller Shift för kikarsikte, klicka för att skjuta.</p>
+    <p style="opacity:0.75; max-width:400px; line-height:1.5;">Fem vattenskotrar stör lugnet vid viken. Dra med fingret för att sikta, tryck på &#8981;-knappen för kikarsikte, tryck snabbt på skärmen för att skjuta.</p>
     <div class="btn">Klicka för att börja (med ljud)</div>
   </div>
 </div>
@@ -102,9 +112,9 @@
     const src = AC.createBufferSource();
     src.buffer = buf; src.loop = true;
     const lp = AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 420; lp.Q.value = 0.4;
-    const g = AC.createGain(); g.gain.value = 0.10;
+    const g = AC.createGain(); g.gain.value = 0.24;
     const lfo = AC.createOscillator(); lfo.frequency.value = 0.13;
-    const lfoGain = AC.createGain(); lfoGain.gain.value = 0.045;
+    const lfoGain = AC.createGain(); lfoGain.gain.value = 0.09;
     lfo.connect(lfoGain); lfoGain.connect(g.gain);
     src.connect(lp); lp.connect(g); g.connect(masterGain);
     src.start(); lfo.start();
@@ -119,7 +129,7 @@
       o.frequency.exponentialRampToValueAtTime(2200, t+0.12);
       o.frequency.exponentialRampToValueAtTime(1100, t+0.35);
       og.gain.setValueAtTime(0.0001, t);
-      og.gain.exponentialRampToValueAtTime(0.05, t+0.05);
+      og.gain.exponentialRampToValueAtTime(0.09, t+0.05);
       og.gain.exponentialRampToValueAtTime(0.0001, t+0.4);
       o.start(t); o.stop(t+0.45);
       setTimeout(gull, 6000 + Math.random()*12000);
@@ -347,11 +357,15 @@
   }
   let wakeIdx = 0;
 
-  // ---------- CAMERA: absolute mouse-position aiming (robust everywhere) ----------
+  // ---------- CONTROLS: touch (drag pan, tap shoot, pinch zoom, scope button) + mouse fallback ----------
   let yaw = 0, pitch = -0.03;
   const YAW_LIMIT = H_FOV/2 - 0.12;
   const PITCH_UP = pitchTop - 0.1, PITCH_DOWN = pitchBottom + 0.1;
   let fov = 60, targetFov = 60;
+  const zoombtn = document.getElementById('zoombtn');
+  let scopeOn = false;
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
   function applyCamera(){
     camera.rotation.order = 'YXZ';
@@ -362,24 +376,89 @@
   }
   applyCamera();
 
+  // --- Touch: one finger drags the view; a quick tap with little movement = shot; two fingers pinch = zoom
+  let touchState = null; // {id, x, y, moved, t0}
+  let pinchStart = null; // {dist, fov}
+
+  sceneEl.addEventListener('touchstart', (e)=>{
+    if (startScreen.style.display !== 'none') return;
+    e.preventDefault();
+    if (e.touches.length === 1){
+      const t = e.touches[0];
+      touchState = { id: t.identifier, x: t.clientX, y: t.clientY, moved: 0, t0: performance.now() };
+    } else if (e.touches.length === 2){
+      touchState = null; // cancel tap when second finger lands
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStart = { dist: Math.hypot(dx,dy), fov: targetFov };
+    }
+  }, { passive:false });
+
+  sceneEl.addEventListener('touchmove', (e)=>{
+    e.preventDefault();
+    if (e.touches.length === 2 && pinchStart){
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const ratio = Math.hypot(dx,dy) / pinchStart.dist;
+      targetFov = clamp(pinchStart.fov / ratio, 14, 60);
+      return;
+    }
+    if (!touchState) return;
+    const t = Array.from(e.touches).find(t => t.identifier === touchState.id);
+    if (!t) return;
+    const dx = t.clientX - touchState.x, dy = t.clientY - touchState.y;
+    touchState.x = t.clientX; touchState.y = t.clientY;
+    touchState.moved += Math.abs(dx) + Math.abs(dy);
+    const sens = 0.0028 * (fov/60); // slower when zoomed in
+    yaw = clamp(yaw + dx*sens, -YAW_LIMIT, YAW_LIMIT);
+    pitch = clamp(pitch + dy*sens, PITCH_DOWN, PITCH_UP);
+    applyCamera();
+  }, { passive:false });
+
+  sceneEl.addEventListener('touchend', (e)=>{
+    e.preventDefault();
+    if (e.touches.length < 2) pinchStart = null;
+    if (!touchState) return;
+    const stillDown = Array.from(e.touches).some(t => t.identifier === touchState.id);
+    if (!stillDown){
+      const quick = (performance.now() - touchState.t0) < 350;
+      if (touchState.moved < 12 && quick) shoot();
+      touchState = null;
+    }
+  }, { passive:false });
+
+  // Scope toggle button
+  function setScope(on){
+    scopeOn = on;
+    targetFov = on ? 18 : 60;
+    zoombtn.classList.toggle('active', on);
+  }
+  zoombtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); e.stopPropagation(); setScope(!scopeOn); }, { passive:false });
+  zoombtn.addEventListener('mousedown', (e)=>{ e.preventDefault(); e.stopPropagation(); setScope(!scopeOn); });
+
+  // --- Mouse fallback for desktop: absolute position aiming, click to shoot
+  let usingTouch = false;
+  sceneEl.addEventListener('touchstart', ()=>{ usingTouch = true; }, { once:true, passive:true });
   window.addEventListener('mousemove', (e)=>{
-    const nx = (e.clientX / window.innerWidth) * 2 - 1;   // -1..1
+    if (usingTouch) return;
+    const nx = (e.clientX / window.innerWidth) * 2 - 1;
     const ny = (e.clientY / window.innerHeight) * 2 - 1;
     yaw = nx * YAW_LIMIT;
-    pitch = -ny * Math.max(Math.abs(PITCH_UP), Math.abs(PITCH_DOWN));
-    pitch = Math.max(PITCH_DOWN, Math.min(PITCH_UP, pitch));
+    pitch = clamp(-ny * Math.max(Math.abs(PITCH_UP), Math.abs(PITCH_DOWN)), PITCH_DOWN, PITCH_UP);
     applyCamera();
   });
-
-  // Zoom: hold right mouse button OR Shift; wheel also works
   sceneEl.addEventListener('contextmenu', (e)=> e.preventDefault());
-  sceneEl.addEventListener('mousedown', (e)=>{ if (e.button === 2) targetFov = 18; });
-  window.addEventListener('mouseup', (e)=>{ if (e.button === 2) targetFov = 60; });
+  sceneEl.addEventListener('mousedown', (e)=>{
+    if (usingTouch) return;
+    if (e.button === 2){ targetFov = 18; return; }
+    if (e.button === 0 && startScreen.style.display === 'none') shoot();
+  });
+  window.addEventListener('mouseup', (e)=>{ if (!usingTouch && e.button === 2) targetFov = 60; });
   window.addEventListener('keydown', (e)=>{ if (e.key === 'Shift') targetFov = 18; });
   window.addEventListener('keyup', (e)=>{ if (e.key === 'Shift') targetFov = 60; });
   sceneEl.addEventListener('wheel', (e)=>{
     e.preventDefault();
-    targetFov = Math.max(14, Math.min(60, targetFov + e.deltaY*0.03));
+    targetFov = clamp(targetFov + e.deltaY*0.03, 14, 60);
   }, { passive:false });
 
   function updateZoom(dt){
@@ -435,7 +514,7 @@
       }
     } else {
       jsState.pos.x += jsState.leaveDir * 26 * dt;
-      x = jsState.pos.x; z = jsState.cz;
+      x = jsState.pos.x; z = jsState.pos.z;
       vx = jsState.leaveDir; vz = 0;
       if (Math.abs(Math.atan2(x, Math.abs(z))) > H_FOV/2 + 0.15){
         jsState.alive = false; jetski.visible = false;
@@ -560,11 +639,6 @@
     startAmbience();
     gameActive = true;
     spawnJetski();
-  });
-
-  sceneEl.addEventListener('mousedown', (e)=>{
-    if (e.button !== 0) return;
-    if (startScreen.style.display === 'none') shoot();
   });
 
   window.addEventListener('resize', ()=>{
