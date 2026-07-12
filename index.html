@@ -9,6 +9,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <script>
+  // Visible error reporter: on a phone there's no console, so surface crashes on screen
+  window.addEventListener('error', function(e){
+    var el = document.getElementById('errbox') || (function(){
+      var d = document.createElement('div');
+      d.id = 'errbox';
+      d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#7a1010;color:#fff;font:12px monospace;padding:8px;z-index:9999;white-space:pre-wrap;';
+      document.body.appendChild(d);
+      return d;
+    })();
+    el.textContent = 'FEL: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno;
+  });
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
   }
