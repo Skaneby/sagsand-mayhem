@@ -348,9 +348,9 @@
   // Each jetski blasts its own synthesized house loop: kick + hats + bassline.
   // Different tempo & key per slot so overlapping skis clash properly (that's the point).
   const HOUSE_PRESETS = [
-    { bpm:126, root:55.0,  pattern:[0,0,7,0, 5,0,7,10] },   // A1
-    { bpm:122, root:49.0,  pattern:[0,3,0,5, 0,3,7,5]  },   // G1
-    { bpm:132, root:61.74, pattern:[0,0,5,3, 0,0,10,7] }    // B1
+    { bpm:126, root:220.0,  pattern:[0,0,7,0, 5,0,7,10] },   // A3 — phone speakers can't reproduce below ~200 Hz
+    { bpm:122, root:196.0,  pattern:[0,3,0,5, 0,3,7,5]  },   // G3
+    { bpm:132, root:246.9,  pattern:[0,0,5,3, 0,0,10,7] }    // B3
   ];
 
   function startHouseTrack(slot){
@@ -366,16 +366,36 @@
     let nextTime = AC.currentTime + 0.05;
 
     function scheduleStep(t, s){
-      // Kick on every beat (four on the floor): steps 0,2,4,6 of the 8-step bar
+      // Kick on every beat: low thump + a mid-range "click" transient so it carries on small speakers
       if (s % 2 === 0){
         const o = AC.createOscillator(); o.type='sine';
         const g = AC.createGain();
-        o.frequency.setValueAtTime(150, t);
-        o.frequency.exponentialRampToValueAtTime(42, t+0.11);
-        g.gain.setValueAtTime(0.9, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t+0.14);
+        o.frequency.setValueAtTime(160, t);
+        o.frequency.exponentialRampToValueAtTime(55, t+0.10);
+        g.gain.setValueAtTime(0.8, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.13);
         o.connect(g); g.connect(trackGain);
-        o.start(t); o.stop(t+0.16);
+        o.start(t); o.stop(t+0.15);
+        const click = AC.createOscillator(); click.type='triangle';
+        const cg = AC.createGain();
+        click.frequency.setValueAtTime(1800, t);
+        click.frequency.exponentialRampToValueAtTime(500, t+0.03);
+        cg.gain.setValueAtTime(0.5, t);
+        cg.gain.exponentialRampToValueAtTime(0.001, t+0.04);
+        click.connect(cg); cg.connect(trackGain);
+        click.start(t); click.stop(t+0.05);
+      }
+      // Clap on beats 2 & 4 (steps 2 and 6)
+      if (s === 2 || s === 6){
+        const len = AC.sampleRate * 0.09;
+        const buf = AC.createBuffer(1, len, AC.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i=0;i<len;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len,1.1);
+        const src = AC.createBufferSource(); src.buffer = buf;
+        const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 1500; bp.Q.value = 1.2;
+        const g = AC.createGain(); g.gain.value = 0.5;
+        src.connect(bp); bp.connect(g); g.connect(trackGain);
+        src.start(t);
       }
       // Open hat on the offbeat
       if (s % 2 === 1){
@@ -385,17 +405,20 @@
         for (let i=0;i<len;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len,1.5);
         const src = AC.createBufferSource(); src.buffer = buf;
         const hp = AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 6500;
-        const g = AC.createGain(); g.gain.value = 0.35;
+        const g = AC.createGain(); g.gain.value = 0.4;
         src.connect(hp); hp.connect(g); g.connect(trackGain);
         src.start(t);
       }
-      // Bassline: 8th-note pattern
+      // Bassline in a phone-audible register, plucky
       const semis = preset.pattern[s % 8];
       const o = AC.createOscillator(); o.type='sawtooth';
       o.frequency.value = preset.root * Math.pow(2, semis/12);
-      const lp = AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 420; lp.Q.value = 4;
+      const lp = AC.createBiquadFilter(); lp.type='lowpass';
+      lp.frequency.setValueAtTime(2200, t);
+      lp.frequency.exponentialRampToValueAtTime(500, t + beatLen*0.4);
+      lp.Q.value = 6;
       const g = AC.createGain();
-      g.gain.setValueAtTime(0.28, t);
+      g.gain.setValueAtTime(0.34, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + beatLen*0.45);
       o.connect(lp); lp.connect(g); g.connect(trackGain);
       o.start(t); o.stop(t + beatLen*0.5);
@@ -597,7 +620,7 @@
       const dist = Math.sqrt(x*x + z*z);
       const xn = Math.atan2(x, Math.abs(z)) / (H_FOV/2);
       if (dist < nearestDist){ nearestDist = dist; nearestX = xn; nearestSpeed = Math.abs(s.speed); }
-      if (j.music) j.music.setLevel(Math.min(0.22, 20/Math.max(dist,20)), xn);
+      if (j.music) j.music.setLevel(Math.min(0.3, 27/Math.max(dist,20)), xn);
 
       j.laughTimer -= dt;
       if (j.laughTimer <= 0){
