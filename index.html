@@ -25,13 +25,14 @@
   #scorebox { font-size:26px; font-weight:bold; margin-top:2px; text-shadow:0 2px 6px rgba(0,0,0,0.7); }
   #subscore { font-size:12px; opacity:0.85; margin-top:2px; text-shadow:0 1px 4px rgba(0,0,0,0.7); }
 
-  #crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:56px; height:56px; pointer-events:none; z-index:7; }
-  #crosshair .ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid rgba(255,255,255,0.7); box-shadow:0 0 6px rgba(0,0,0,0.45); transition:transform 0.15s, border-color 0.1s; }
-  #crosshair::before, #crosshair::after { content:''; position:absolute; background:rgba(232,84,58,0.9); }
-  #crosshair::before { width:1.5px; height:20px; left:50%; top:50%; transform:translate(-50%,-50%); }
-  #crosshair::after { width:20px; height:1.5px; left:50%; top:50%; transform:translate(-50%,-50%); }
-  #crosshair .dot { position:absolute; width:4px; height:4px; border-radius:50%; background:#e8543a; left:50%; top:50%; transform:translate(-50%,-50%); }
-  #zoomlabel { position:absolute; left:50%; top:calc(50% + 44px); transform:translateX(-50%); color:#fff; font-size:11px; letter-spacing:2px; opacity:0; transition:opacity 0.2s; text-shadow:0 1px 3px rgba(0,0,0,0.7); z-index:8; }
+  #crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:180px; height:180px; pointer-events:none; z-index:7; transition:transform 0.15s; }
+  #crosshair svg { width:100%; height:100%; display:block; filter: drop-shadow(0 0 2px rgba(0,0,0,0.6)); }
+  #rangebox {
+    position:absolute; left:50%; top:calc(50% + 100px); transform:translateX(-50%);
+    color:#9fe870; font-family:'Courier New',monospace; font-size:12px; letter-spacing:2px;
+    text-shadow:0 0 4px rgba(0,0,0,0.8); z-index:8; text-align:center; line-height:1.6;
+  }
+  #zoomlabel { position:absolute; left:50%; top:calc(50% - 108px); transform:translateX(-50%); color:#9fe870; font-family:'Courier New',monospace; font-size:11px; letter-spacing:2px; opacity:0; transition:opacity 0.2s; text-shadow:0 0 4px rgba(0,0,0,0.8); z-index:8; }
   .floatscore { position:absolute; color:#ffd24a; font-size:22px; font-weight:bold; text-shadow:0 2px 6px rgba(0,0,0,0.8); pointer-events:none; z-index:9; transition:transform 1s ease-out, opacity 1s ease-out; }
 
   .roundbtn {
@@ -68,7 +69,44 @@
     <div id="msg"></div>
     <div id="hint"></div>
   </div>
-  <div id="crosshair"><div class="ring"></div><div class="dot"></div></div>
+  <div id="crosshair">
+    <svg viewBox="0 0 180 180">
+      <!-- Outer ring -->
+      <circle cx="90" cy="90" r="86" fill="none" stroke="rgba(230,235,238,0.85)" stroke-width="1.6"/>
+      <circle cx="90" cy="90" r="60" fill="none" stroke="rgba(230,235,238,0.35)" stroke-width="0.8"/>
+      <!-- Main cross, gap in center -->
+      <line x1="4" y1="90" x2="66" y2="90" stroke="rgba(230,235,238,0.9)" stroke-width="1.4"/>
+      <line x1="114" y1="90" x2="176" y2="90" stroke="rgba(230,235,238,0.9)" stroke-width="1.4"/>
+      <line x1="90" y1="4" x2="90" y2="66" stroke="rgba(230,235,238,0.9)" stroke-width="1.4"/>
+      <line x1="90" y1="114" x2="90" y2="176" stroke="rgba(230,235,238,0.9)" stroke-width="1.4"/>
+      <!-- Mil-dots along the cross -->
+      <g fill="rgba(230,235,238,0.9)">
+        <circle cx="26" cy="90" r="1.7"/><circle cx="44" cy="90" r="1.7"/><circle cx="60" cy="90" r="1.7"/>
+        <circle cx="120" cy="90" r="1.7"/><circle cx="136" cy="90" r="1.7"/><circle cx="154" cy="90" r="1.7"/>
+        <circle cx="90" cy="26" r="1.7"/><circle cx="90" cy="44" r="1.7"/><circle cx="90" cy="60" r="1.7"/>
+        <circle cx="90" cy="120" r="1.7"/><circle cx="90" cy="136" r="1.7"/><circle cx="90" cy="154" r="1.7"/>
+      </g>
+      <!-- Stadia tick marks on the horizontal -->
+      <g stroke="rgba(230,235,238,0.8)" stroke-width="1.2">
+        <line x1="35" y1="86" x2="35" y2="94"/><line x1="53" y1="87" x2="53" y2="93"/>
+        <line x1="127" y1="87" x2="127" y2="93"/><line x1="145" y1="86" x2="145" y2="94"/>
+      </g>
+      <!-- Bullet-drop ladder below center -->
+      <g stroke="rgba(230,235,238,0.7)" stroke-width="1">
+        <line x1="82" y1="126" x2="98" y2="126"/>
+        <line x1="84" y1="142" x2="96" y2="142"/>
+        <line x1="86" y1="158" x2="94" y2="158"/>
+      </g>
+      <!-- Center chevron, red -->
+      <path d="M 90 84 L 96 96 L 90 92 L 84 96 Z" fill="rgba(232,84,58,0.95)" id="chevron"/>
+      <!-- Corner brackets -->
+      <g stroke="rgba(230,235,238,0.6)" stroke-width="1.6" fill="none">
+        <path d="M 14 30 L 14 14 L 30 14"/><path d="M 150 14 L 166 14 L 166 30"/>
+        <path d="M 166 150 L 166 166 L 150 166"/><path d="M 30 166 L 14 166 L 14 150"/>
+      </g>
+    </svg>
+  </div>
+  <div id="rangebox"><span id="rangetext">AVSTÅND ---</span></div>
   <div id="zoomlabel">ZOOM</div>
   <div class="roundbtn" id="zoombtn">&#9906;</div>
   <div class="roundbtn" id="firebtn">SKJUT</div>
@@ -93,7 +131,9 @@
   const ovText = document.getElementById('ovText');
   const hintEl = document.getElementById('hint');
   const zoomLabel = document.getElementById('zoomlabel');
-  const crossRing = document.querySelector('#crosshair .ring');
+  const crosshairEl = document.getElementById('crosshair');
+  const chevron = document.getElementById('chevron');
+  const rangeText = document.getElementById('rangetext');
   const zoombtn = document.getElementById('zoombtn');
   const firebtn = document.getElementById('firebtn');
 
@@ -304,6 +344,86 @@
     });
   }
 
+  // ---------- HOUSE MUSIC per jetski ----------
+  // Each jetski blasts its own synthesized house loop: kick + hats + bassline.
+  // Different tempo & key per slot so overlapping skis clash properly (that's the point).
+  const HOUSE_PRESETS = [
+    { bpm:126, root:55.0,  pattern:[0,0,7,0, 5,0,7,10] },   // A1
+    { bpm:122, root:49.0,  pattern:[0,3,0,5, 0,3,7,5]  },   // G1
+    { bpm:132, root:61.74, pattern:[0,0,5,3, 0,0,10,7] }    // B1
+  ];
+
+  function startHouseTrack(slot){
+    if (!AC) return null;
+    const preset = HOUSE_PRESETS[slot % HOUSE_PRESETS.length];
+    const trackGain = AC.createGain(); trackGain.gain.value = 0;
+    const pan = (AC.createStereoPanner ? AC.createStereoPanner() : null);
+    if (pan){ trackGain.connect(pan); pan.connect(masterGain); }
+    else trackGain.connect(masterGain);
+
+    const beatLen = 60 / preset.bpm;
+    let step = 0;
+    let nextTime = AC.currentTime + 0.05;
+
+    function scheduleStep(t, s){
+      // Kick on every beat (four on the floor): steps 0,2,4,6 of the 8-step bar
+      if (s % 2 === 0){
+        const o = AC.createOscillator(); o.type='sine';
+        const g = AC.createGain();
+        o.frequency.setValueAtTime(150, t);
+        o.frequency.exponentialRampToValueAtTime(42, t+0.11);
+        g.gain.setValueAtTime(0.9, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.14);
+        o.connect(g); g.connect(trackGain);
+        o.start(t); o.stop(t+0.16);
+      }
+      // Open hat on the offbeat
+      if (s % 2 === 1){
+        const len = AC.sampleRate * 0.06;
+        const buf = AC.createBuffer(1, len, AC.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i=0;i<len;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len,1.5);
+        const src = AC.createBufferSource(); src.buffer = buf;
+        const hp = AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 6500;
+        const g = AC.createGain(); g.gain.value = 0.35;
+        src.connect(hp); hp.connect(g); g.connect(trackGain);
+        src.start(t);
+      }
+      // Bassline: 8th-note pattern
+      const semis = preset.pattern[s % 8];
+      const o = AC.createOscillator(); o.type='sawtooth';
+      o.frequency.value = preset.root * Math.pow(2, semis/12);
+      const lp = AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 420; lp.Q.value = 4;
+      const g = AC.createGain();
+      g.gain.setValueAtTime(0.28, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + beatLen*0.45);
+      o.connect(lp); lp.connect(g); g.connect(trackGain);
+      o.start(t); o.stop(t + beatLen*0.5);
+    }
+
+    // Lookahead scheduler: fills half a second of audio at a time
+    const timer = setInterval(()=>{
+      if (!AC) return;
+      while (nextTime < AC.currentTime + 0.5){
+        scheduleStep(nextTime, step);
+        step = (step + 1) % 8;
+        nextTime += beatLen / 2; // 8th notes
+      }
+    }, 120);
+
+    return {
+      setLevel(vol, panX){
+        trackGain.gain.setTargetAtTime(vol, AC.currentTime, 0.15);
+        if (pan) pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, panX)), AC.currentTime, 0.15);
+      },
+      stop(){
+        clearInterval(timer);
+        trackGain.gain.setTargetAtTime(0, AC.currentTime, 0.02);
+        setTimeout(()=>{ try{ trackGain.disconnect(); if(pan) pan.disconnect(); }catch(e){} }, 400);
+      }
+    };
+  }
+
   // ================= THREE =================
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 500);
@@ -419,11 +539,14 @@
     j.alive = true;
     j.mesh.visible = true;
     j.laughTimer = 1.5 + Math.random()*3;
+    if (j.music) j.music.stop();
+    j.music = startHouseTrack(jetskis.indexOf(j));
   }
 
   function killJetski(j, awardPoints){
     j.alive = false;
     j.mesh.visible = false;
+    if (j.music){ j.music.stop(); j.music = null; }  // musiken dör med skotern
     explodeAt(j.mesh.position.clone(), false);
     sfxScream();
     if (awardPoints){
@@ -462,6 +585,7 @@
         vx = s.leaveDir; vz = 0;
         if (Math.abs(Math.atan2(x, Math.abs(z))) > H_FOV/2 + 0.15){
           j.alive = false; j.mesh.visible = false;
+          if (j.music){ j.music.stop(); j.music = null; }
           return;
         }
       }
@@ -471,7 +595,9 @@
       j.mesh.rotation.z = -s.speed * 0.2;
 
       const dist = Math.sqrt(x*x + z*z);
-      if (dist < nearestDist){ nearestDist = dist; nearestX = Math.atan2(x, Math.abs(z)) / (H_FOV/2); nearestSpeed = Math.abs(s.speed); }
+      const xn = Math.atan2(x, Math.abs(z)) / (H_FOV/2);
+      if (dist < nearestDist){ nearestDist = dist; nearestX = xn; nearestSpeed = Math.abs(s.speed); }
+      if (j.music) j.music.setLevel(Math.min(0.22, 20/Math.max(dist,20)), xn);
 
       j.laughTimer -= dt;
       if (j.laughTimer <= 0){
@@ -483,8 +609,13 @@
     });
 
     // Engine follows the nearest jetski; silent when none alive
-    if (aliveCount > 0) setEngineTarget(Math.min(0.16, 15/Math.max(nearestDist,20)), nearestX, nearestSpeed);
-    else setEngineTarget(0, 0, 0);
+    if (aliveCount > 0){
+      setEngineTarget(Math.min(0.16, 15/Math.max(nearestDist,20)), nearestX, nearestSpeed);
+      rangeText.textContent = 'AVSTÅND ' + Math.round(nearestDist) + ' M · MÅL ' + aliveCount;
+    } else {
+      setEngineTarget(0, 0, 0);
+      rangeText.textContent = 'AVSTÅND --- · INGA MÅL';
+    }
 
     // Respawn to maintain concurrency until quota is met
     const remaining = lvl.quota - hits;
@@ -525,26 +656,69 @@
 
   // ---------- EXPLOSIONS ----------
   const explosionGroup = new THREE.Group(); scene.add(explosionGroup);
+  const ringGroup = new THREE.Group(); scene.add(ringGroup);
+
   function explodeAt(pos, big){
-    const n = big ? 30 : 16;
+    const n = big ? 55 : 16;
     for (let i=0;i<n;i++){
-      const p = new THREE.Mesh(new THREE.SphereGeometry(big?0.4:0.22,6,6),
-        new THREE.MeshBasicMaterial({color: Math.random()<0.5 ? 0xff8844 : 0xffffff, transparent:true}));
+      const isWater = big && Math.random() < 0.6;
+      const p = new THREE.Mesh(
+        new THREE.SphereGeometry(big ? (isWater ? 0.6 : 0.45) : 0.22, 6, 6),
+        new THREE.MeshBasicMaterial({
+          color: isWater ? 0xdff0f8 : (Math.random()<0.5 ? 0xff8844 : 0xffffff),
+          transparent:true
+        }));
       p.position.copy(pos);
-      const sp = big ? 16 : 10;
-      p.userData.vel = new THREE.Vector3((Math.random()-0.5)*sp, Math.random()*sp*0.7+2, (Math.random()-0.5)*sp);
+      if (isWater){
+        // Water column: mostly straight up, tall and narrow
+        p.userData.vel = new THREE.Vector3((Math.random()-0.5)*5, 14 + Math.random()*16, (Math.random()-0.5)*5);
+        p.userData.decay = 0.65;
+      } else {
+        const sp = big ? 20 : 10;
+        p.userData.vel = new THREE.Vector3((Math.random()-0.5)*sp, Math.random()*sp*0.7+3, (Math.random()-0.5)*sp);
+        p.userData.decay = 1.1;
+      }
       p.userData.life = 1;
       explosionGroup.add(p);
+    }
+    if (big){
+      // Expanding shockwave ring on the water surface
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.8, 1.6, 32),
+        new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.8, side:THREE.DoubleSide })
+      );
+      ring.rotation.x = -Math.PI/2;
+      ring.position.set(pos.x, waterY(pos.z) + 0.1, pos.z);
+      ring.userData.life = 1;
+      ringGroup.add(ring);
+      // Central fireball flash
+      const flash = new THREE.Mesh(new THREE.SphereGeometry(3.5, 10, 10),
+        new THREE.MeshBasicMaterial({ color:0xffcc66, transparent:true, opacity:0.95 }));
+      flash.position.copy(pos);
+      flash.userData.life = 1; flash.userData.isFlash = true;
+      explosionGroup.add(flash);
     }
   }
   function updateExplosions(dt){
     explosionGroup.children.slice().forEach(p=>{
-      p.userData.life -= dt*1.1;
+      p.userData.life -= dt * (p.userData.decay || 1.1);
       if (p.userData.life <= 0){ explosionGroup.remove(p); return; }
+      if (p.userData.isFlash){
+        p.scale.setScalar(1 + (1 - p.userData.life)*3);
+        p.material.opacity = p.userData.life * 0.95;
+        return;
+      }
       p.userData.vel.y -= dt*10;
       p.position.addScaledVector(p.userData.vel, dt);
       p.material.opacity = p.userData.life;
       p.scale.setScalar(Math.max(0.05, p.userData.life));
+    });
+    ringGroup.children.slice().forEach(r=>{
+      r.userData.life -= dt*0.8;
+      if (r.userData.life <= 0){ ringGroup.remove(r); return; }
+      const s = 1 + (1 - r.userData.life) * 16;
+      r.scale.setScalar(s);
+      r.material.opacity = r.userData.life * 0.8;
     });
   }
 
@@ -577,7 +751,7 @@
         // Splash damage: every jetski within blast radius goes down
         let any = false;
         jetskis.forEach(j=>{
-          if (j.alive && j.mesh.position.distanceTo(impact) < 14){
+          if (j.alive && j.mesh.position.distanceTo(impact) < 16){
             killJetski(j, true);
             any = true;
           }
@@ -723,9 +897,9 @@
       applyCamera();
     }
     const zoomed = fov < 55;
-    zoomLabel.style.opacity = zoomed ? 0.8 : 0;
+    zoomLabel.style.opacity = zoomed ? 0.9 : 0;
     zoomLabel.textContent = 'ZOOM ' + (60/fov).toFixed(1) + 'x';
-    crossRing.style.transform = 'scale(' + (zoomed ? 1.35 : 1) + ')';
+    crosshairEl.style.transform = 'translate(-50%,-50%) scale(' + (zoomed ? 1.5 : 1) + ')';
   }
 
   // ---------- SHOOTING ----------
@@ -749,8 +923,8 @@
     });
     if (hit) checkLevelDone();
     else {
-      crossRing.style.borderColor = 'rgba(232,84,58,0.9)';
-      setTimeout(()=> crossRing.style.borderColor = 'rgba(255,255,255,0.7)', 90);
+      chevron.setAttribute('fill', 'rgba(255,255,255,0.95)');
+      setTimeout(()=> chevron.setAttribute('fill', 'rgba(232,84,58,0.95)'), 90);
     }
   }
 
@@ -778,7 +952,7 @@
     if (hits < lvl.quota) return;
     gameActive = false;
     setEngineTarget(0,0,0);
-    jetskis.forEach(j=>{ j.alive=false; j.mesh.visible=false; });
+    jetskis.forEach(j=>{ j.alive=false; j.mesh.visible=false; if (j.music){ j.music.stop(); j.music = null; } });
     if (levelIdx < LEVELS.length - 1){
       setTimeout(()=> showOverlay(
         lvl.name + ' klar!',
