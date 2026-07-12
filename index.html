@@ -112,12 +112,22 @@
     const src = AC.createBufferSource();
     src.buffer = buf; src.loop = true;
     const lp = AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 420; lp.Q.value = 0.4;
-    const g = AC.createGain(); g.gain.value = 0.24;
+    const g = AC.createGain(); g.gain.value = 0.34;
     const lfo = AC.createOscillator(); lfo.frequency.value = 0.13;
-    const lfoGain = AC.createGain(); lfoGain.gain.value = 0.09;
+    const lfoGain = AC.createGain(); lfoGain.gain.value = 0.13;
     lfo.connect(lfoGain); lfoGain.connect(g.gain);
     src.connect(lp); lp.connect(g); g.connect(masterGain);
     src.start(); lfo.start();
+    // Brighter "hiss" layer — makes it read as waves on a phone speaker (which can't reproduce the low rumble)
+    const src2 = AC.createBufferSource();
+    src2.buffer = buf; src2.loop = true; src2.playbackRate.value = 1.31;
+    const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.5;
+    const g2 = AC.createGain(); g2.gain.value = 0.07;
+    const lfo2 = AC.createOscillator(); lfo2.frequency.value = 0.09;
+    const lfo2Gain = AC.createGain(); lfo2Gain.gain.value = 0.05;
+    lfo2.connect(lfo2Gain); lfo2Gain.connect(g2.gain);
+    src2.connect(bp); bp.connect(g2); g2.connect(masterGain);
+    src2.start(); lfo2.start();
     // Occasional gull cries
     function gull(){
       if (!AC) return;
@@ -160,7 +170,7 @@
   }
   function updateEngine(dist, xNorm, speedFactor){
     if (!engineNodes || !AC) return;
-    const vol = Math.min(0.32, 26/Math.max(dist, 20));
+    const vol = Math.min(0.20, 18/Math.max(dist, 20));
     engineNodes.g.gain.setTargetAtTime(vol, AC.currentTime, 0.12);
     engineNodes.o1.frequency.setTargetAtTime(75 + speedFactor*40, AC.currentTime, 0.2);
     if (engineNodes.pan) engineNodes.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, xNorm)), AC.currentTime, 0.15);
@@ -204,18 +214,18 @@
 
   function sfxScream(){
     if (!AC) return;
-    const t = AC.currentTime;
+    const t = AC.currentTime + 0.06; // starts just after the blast so it isn't masked
     const o = AC.createOscillator(); o.type='sawtooth';
     const g = AC.createGain();
-    o.frequency.setValueAtTime(650, t);
-    o.frequency.exponentialRampToValueAtTime(700, t+0.08);
-    o.frequency.exponentialRampToValueAtTime(180, t+0.55);
+    o.frequency.setValueAtTime(720, t);
+    o.frequency.exponentialRampToValueAtTime(820, t+0.10);
+    o.frequency.exponentialRampToValueAtTime(160, t+0.85);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.22, t+0.04);
-    g.gain.exponentialRampToValueAtTime(0.0001, t+0.6);
-    const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=800; bp.Q.value=1.2;
+    g.gain.exponentialRampToValueAtTime(0.42, t+0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.9);
+    const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=1.0;
     o.connect(bp); bp.connect(g); g.connect(masterGain);
-    o.start(t); o.stop(t+0.65);
+    o.start(t); o.stop(t+0.95);
     // splash after
     setTimeout(()=>{
       const t2 = AC.currentTime;
@@ -234,20 +244,19 @@
   function sfxLaugh(dist){
     if (!AC) return;
     const t0 = AC.currentTime;
-    const vol = Math.min(0.14, 12/Math.max(dist,20));
-    // "ha-ha-ha": three descending pitched blips
-    [0, 0.18, 0.36].forEach((dt, i)=>{
+    const vol = Math.min(0.30, 28/Math.max(dist,20));
+    // "HA-ha-ha-haa": four pitched syllables, first accented, descending
+    [[0, 1.0, 380],[0.16, 0.8, 340],[0.31, 0.7, 305],[0.46, 0.85, 270]].forEach(([dt, amp, f])=>{
       const o = AC.createOscillator(); o.type='square';
       const g = AC.createGain();
-      const f = 340 - i*40;
       o.frequency.setValueAtTime(f, t0+dt);
-      o.frequency.exponentialRampToValueAtTime(f*0.75, t0+dt+0.12);
+      o.frequency.exponentialRampToValueAtTime(f*0.7, t0+dt+0.13);
       g.gain.setValueAtTime(0.0001, t0+dt);
-      g.gain.exponentialRampToValueAtTime(vol, t0+dt+0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0+dt+0.14);
-      const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=600; bp.Q.value=1.5;
+      g.gain.exponentialRampToValueAtTime(vol*amp, t0+dt+0.025);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0+dt+0.15);
+      const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=650; bp.Q.value=1.8;
       o.connect(bp); bp.connect(g); g.connect(masterGain);
-      o.start(t0+dt); o.stop(t0+dt+0.16);
+      o.start(t0+dt); o.stop(t0+dt+0.17);
     });
   }
 
@@ -359,8 +368,9 @@
 
   // ---------- CONTROLS: touch (drag pan, tap shoot, pinch zoom, scope button) + mouse fallback ----------
   let yaw = 0, pitch = -0.03;
-  const YAW_LIMIT = H_FOV/2 - 0.12;
-  const PITCH_UP = pitchTop - 0.1, PITCH_DOWN = pitchBottom + 0.1;
+  // Navigation limits trimmed: −10% horizontal, −20% vertical (user request)
+  const YAW_LIMIT = (H_FOV/2 - 0.12) * 0.9;
+  const PITCH_UP = (pitchTop - 0.1) * 0.8, PITCH_DOWN = (pitchBottom + 0.1) * 0.8;
   let fov = 60, targetFov = 60;
   const zoombtn = document.getElementById('zoombtn');
   let scopeOn = false;
@@ -540,7 +550,7 @@
     laughTimer -= dt;
     if (laughTimer <= 0){
       sfxLaugh(dist);
-      laughTimer = 4 + Math.random()*4;
+      laughTimer = 2.5 + Math.random()*2.5;
     }
 
     if (Math.random() < 0.55){
