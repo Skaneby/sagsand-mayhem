@@ -185,7 +185,7 @@
     for (let i=0;i<len;i++) data[i] = (Math.random()*2-1) * 0.6;
     const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
     const lp = AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 420;
-    const g = AC.createGain(); g.gain.value = 0.30;
+    const g = AC.createGain(); g.gain.value = 0.20;
     const lfo = AC.createOscillator(); lfo.frequency.value = 0.13;
     const lfoG = AC.createGain(); lfoG.gain.value = 0.12;
     lfo.connect(lfoG); lfoG.connect(g.gain);
@@ -709,7 +709,7 @@
       const dist = Math.sqrt(x*x + z*z);
       const xn = Math.atan2(x, Math.abs(z)) / (H_FOV/2);
       if (dist < nearestDist){ nearestDist = dist; nearestX = xn; nearestSpeed = Math.abs(s.speed); }
-      if (j.music) j.music.setLevel(Math.min(0.3, 27/Math.max(dist,20)), xn);
+      if (j.music) j.music.setLevel(Math.min(0.75, 70/Math.max(dist,20)), xn);
 
       j.laughTimer -= dt;
       if (j.laughTimer <= 0){
