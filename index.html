@@ -534,9 +534,6 @@
       g.gain.exponentialRampToValueAtTime(0.001, t + beatLen*0.45);
       o.connect(lp); lp.connect(g); g.connect(trackGain);
       o.start(t); o.stop(t + beatLen*0.5);
-    }
-
-    // Lookahead scheduler: fills half a second of audio at a time
   }
 
   // ================= THREE =================
