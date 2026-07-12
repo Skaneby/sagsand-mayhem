@@ -395,6 +395,7 @@
   }, { passive:false });
 
   sceneEl.addEventListener('touchmove', (e)=>{
+    if (startScreen.style.display !== 'none') return;
     e.preventDefault();
     if (e.touches.length === 2 && pinchStart){
       const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -416,6 +417,7 @@
   }, { passive:false });
 
   sceneEl.addEventListener('touchend', (e)=>{
+    if (startScreen.style.display !== 'none') return;
     e.preventDefault();
     if (e.touches.length < 2) pinchStart = null;
     if (!touchState) return;
@@ -633,13 +635,16 @@
     msgEl.innerHTML = '<h1>Nivå klar!</h1><p>' + points + ' poäng — ' + hits + ' av ' + TOTAL_TARGETS + ' vattenskotrar.<br>Nästa: Nivå 2 — Kulspruta</p>';
   }
 
-  startScreen.addEventListener('click', ()=>{
+  function startGame(){
+    if (gameActive || gameOver) return;
     startScreen.style.display = 'none';
     audioInit();
     startAmbience();
     gameActive = true;
     spawnJetski();
-  });
+  }
+  startScreen.addEventListener('click', startGame);
+  startScreen.addEventListener('touchend', (e)=>{ e.preventDefault(); startGame(); }, { passive:false });
 
   window.addEventListener('resize', ()=>{
     camera.aspect = window.innerWidth/window.innerHeight;
