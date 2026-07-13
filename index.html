@@ -199,6 +199,7 @@
       <div class="btn" id="shareBtn">Dela resultatet</div>
     </div>
     <div class="btn" id="ovBtn">Starta (med ljud)</div>
+    <div class="btn" id="quitBtn" style="display:none; margin-top:12px; border-color:rgba(255,255,255,0.4); color:rgba(255,255,255,0.75);">Avsluta</div>
     <div id="forceUpd" style="margin-top:20px; font-size:12px; opacity:0.55; text-decoration:underline; letter-spacing:1px; pointer-events:auto;">Sök & tvinga uppdatering</div>
   </div>
 </div>
@@ -1266,6 +1267,7 @@
           ()=>{ levelIdx = 0; hits = 0; points = 0; totalTime = 0; startLevel(); }
         );
         document.getElementById('shareRow').style.display = 'block';
+        document.getElementById('quitBtn').style.display = 'block';
       }, 1200);
     }
   }
@@ -1284,11 +1286,30 @@
     const fn = overlayAction; overlayAction = null;
     overlay.style.display = 'none';
     document.getElementById('shareRow').style.display = 'none';
+    document.getElementById('quitBtn').style.display = 'none';
     audioInit();
     startAmbience();
     startEngine();
     fn();
   }
+
+  function quitGame(){
+    gameActive = false;
+    jetskis.forEach(j=>{ j.alive=false; j.mesh.visible=false; if (j.music){ j.music.stop(); j.music = null; } });
+    try { if (AC) AC.close(); } catch(e){}
+    AC = null;
+    window.close(); // fungerar i installerad PWA; webbläsarflikar tillåter det oftast inte
+    // Om fönstret inte stängdes: visa en stilla avslutningsskärm
+    setTimeout(()=>{
+      overlay.innerHTML = '<h2>Sågsand Mayhem</h2><h1>Tack för idag</h1>' +
+        '<p style="opacity:0.75;">Viken vilar. Du kan stänga fliken eller appen nu.</p>';
+      overlay.style.display = 'flex';
+      overlay.style.cursor = 'default';
+    }, 300);
+  }
+  const quitBtn = document.getElementById('quitBtn');
+  quitBtn.addEventListener('click', (e)=>{ e.stopPropagation(); quitGame(); });
+  quitBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); e.stopPropagation(); quitGame(); }, { passive:false });
   const ovBtn = document.getElementById('ovBtn');
   ovBtn.addEventListener('click', overlayGo);
   ovBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); overlayGo(); }, { passive:false });
