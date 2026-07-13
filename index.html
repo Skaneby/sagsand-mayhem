@@ -20,8 +20,73 @@
     })();
     el.textContent = 'FEL: ' + e.message + ' @ ' + (e.filename||'').split('/').pop() + ':' + e.lineno;
   });
+
+  // ---- Update flow: detect a waiting service worker, offer one-tap forced update ----
+  var swReg = null;
+  function showUpdateBanner(){
+    if (document.getElementById('updbanner')) return;
+    var b = document.createElement('div');
+    b.id = 'updbanner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:#1c3322;color:#fff;'+
+      'display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 12px;'+
+      'font:14px Georgia,serif;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+    b.innerHTML = '<span>Ny uppdatering finns</span>'+
+      '<button id="updbtn" style="padding:8px 18px;border:1px solid #9fe870;background:transparent;'+
+      'color:#9fe870;font:13px Georgia,serif;letter-spacing:1px;border-radius:3px;">UPPDATERA NU</button>';
+    document.body.appendChild(b);
+    document.getElementById('updbtn').addEventListener('click', forceUpdate);
+  }
+  function forceUpdate(){
+    // Tvingar in nya versionen: be väntande worker ta över, töm cachen, ladda om förbi allt
+    var done = false;
+    function reload(){ if (done) return; done = true; location.reload(); }
+    if (swReg && swReg.waiting){
+      navigator.serviceWorker.addEventListener('controllerchange', reload);
+      swReg.waiting.postMessage({ type:'SKIP_WAITING' });
+      setTimeout(reload, 1500); // säkerhetsnät om controllerchange uteblir
+    } else {
+      hardRefresh();
+    }
+  }
+  function hardRefresh(){
+    // Kärnvapenalternativet: avregistrera service workers, töm alla cacher, ladda om med cache-bust
+    var work = [];
+    if ('serviceWorker' in navigator){
+      work.push(navigator.serviceWorker.getRegistrations().then(function(rs){
+        return Promise.all(rs.map(function(r){ return r.unregister(); }));
+      }));
+    }
+    if (window.caches){
+      work.push(caches.keys().then(function(ks){
+        return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+      }));
+    }
+    Promise.all(work).catch(function(){}).then(function(){
+      location.replace(location.pathname + '?v=' + Date.now());
+    });
+  }
+  window.sagsandHardRefresh = hardRefresh; // nås från spelets startskärm
+
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').then(function(reg){
+        swReg = reg;
+        if (reg.waiting) showUpdateBanner();               // uppdatering låg redan och väntade
+        reg.addEventListener('updatefound', function(){
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', function(){
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
+          });
+        });
+        // Letar aktivt efter uppdateringar: vid start, när appen kommer i förgrunden, och var 60:e sekund
+        reg.update().catch(function(){});
+        document.addEventListener('visibilitychange', function(){
+          if (!document.hidden) reg.update().catch(function(){});
+        });
+        setInterval(function(){ reg.update().catch(function(){}); }, 60000);
+      }).catch(function(){});
+    });
   }
 </script>
 <title>Sågsand Mayhem</title>
@@ -134,6 +199,7 @@
       <div class="btn" id="shareBtn">Dela resultatet</div>
     </div>
     <div class="btn" id="ovBtn">Starta (med ljud)</div>
+    <div id="forceUpd" style="margin-top:20px; font-size:12px; opacity:0.55; text-decoration:underline; letter-spacing:1px; pointer-events:auto;">Sök & tvinga uppdatering</div>
   </div>
 </div>
 
@@ -1226,6 +1292,9 @@
   const ovBtn = document.getElementById('ovBtn');
   ovBtn.addEventListener('click', overlayGo);
   ovBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); overlayGo(); }, { passive:false });
+
+  const forceUpd = document.getElementById('forceUpd');
+  forceUpd.addEventListener('click', (e)=>{ e.stopPropagation(); if (window.sagsandHardRefresh) window.sagsandHardRefresh(); });
 
   function startLevel(){
     updateHud();
