@@ -76,6 +76,7 @@
       <div id="title">Sågsand Mayhem</div>
       <div id="scorebox">0 p</div>
       <div id="subscore"></div>
+      <div id="timebox" style="font-family:'Courier New',monospace; font-size:16px; margin-top:2px; color:#9fe870; text-shadow:0 0 4px rgba(0,0,0,0.8);">0:00.0</div>
     </div>
     <div id="msg"></div>
     <div id="hint"></div>
@@ -125,6 +126,11 @@
     <h2>Sågsand Mayhem</h2>
     <h1 id="ovTitle">Nivå 1 — Kikarsikte</h1>
     <p id="ovText">Fem vattenskotrar stör lugnet vid viken. Dra med fingret för att sikta, tryck på kikarknappen för zoom, och tryck SKJUT (eller snabbtryck på skärmen) för att skjuta.</p>
+    <div id="shareRow" style="display:none; margin-top:18px; pointer-events:auto;">
+      <input id="playerName" type="text" placeholder="Ditt namn" maxlength="24"
+        style="padding:12px 16px; font-size:15px; border:1px solid rgba(255,255,255,0.4); background:rgba(255,255,255,0.08); color:#fff; border-radius:4px; width:220px; text-align:center; font-family:inherit;">
+      <div class="btn" id="shareBtn" style="margin-top:14px;">Dela resultatet</div>
+    </div>
     <div class="btn" id="ovBtn">Starta (med ljud)</div>
   </div>
 </div>
@@ -1040,6 +1046,116 @@
     }
   }
 
+  // ---------- TIMER & COUNTDOWN ----------
+  let totalTime = 0;          // accumulated across all levels (only while gameActive)
+  let counting = false;       // 3-2-1 countdown in progress
+  const timeboxEl = document.getElementById('timebox');
+  function fmtTime(t){
+    const m = Math.floor(t/60), s = t - m*60;
+    return m + ':' + (s<10?'0':'') + s.toFixed(1);
+  }
+
+  function runCountdown(done){
+    counting = true;
+    let n = 3;
+    function tick(){
+      if (n > 0){
+        msgEl.innerHTML = '<h1 style="font-size:72px;">' + n + '</h1>';
+        // countdown blip
+        if (AC){
+          const o = AC.createOscillator(); o.type='sine'; o.frequency.value = 520;
+          const g = AC.createGain(); g.gain.value = 0.3;
+          o.connect(g); g.connect(masterGain);
+          o.start(); o.stop(AC.currentTime + 0.12);
+        }
+        n--;
+        setTimeout(tick, 700);
+      } else {
+        msgEl.innerHTML = '<h1 style="font-size:56px;">KÖR!</h1>';
+        if (AC){
+          const o = AC.createOscillator(); o.type='sine'; o.frequency.value = 880;
+          const g = AC.createGain(); g.gain.value = 0.35;
+          o.connect(g); g.connect(masterGain);
+          o.start(); o.stop(AC.currentTime + 0.25);
+        }
+        setTimeout(()=>{ msgEl.innerHTML = ''; }, 600);
+        counting = false;
+        done();
+      }
+    }
+    tick();
+  }
+
+  // ---------- RESULT SHARING ----------
+  let finalSnapshot = null; // dataURL captured at the moment the game is completed
+  function captureSnapshot(){
+    try {
+      renderer.render(scene, camera);            // fresh frame in the buffer
+      finalSnapshot = renderer.domElement.toDataURL('image/jpeg', 0.85);
+    } catch(e){ finalSnapshot = null; }
+  }
+
+  function composeShareImage(name, seconds, cb){
+    const W = 1080, H = 1080;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#0a1a2a';
+    ctx.fillRect(0,0,W,H);
+    const img = new Image();
+    img.onload = ()=>{
+      // Cover-fit the game snapshot
+      const ar = img.width/img.height;
+      let dw = W, dh = W/ar;
+      if (dh < H){ dh = H; dw = H*ar; }
+      ctx.drawImage(img, (W-dw)/2, (H-dh)/2, dw, dh);
+      drawText();
+    };
+    img.onerror = drawText;
+    if (finalSnapshot) img.src = finalSnapshot; else drawText();
+
+    function drawText(){
+      // Dark gradient at bottom for legibility
+      const grad = ctx.createLinearGradient(0, H*0.55, 0, H);
+      grad.addColorStop(0, 'rgba(6,12,18,0)');
+      grad.addColorStop(1, 'rgba(6,12,18,0.92)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, H*0.5, W, H*0.5);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#9fe870';
+      ctx.font = '600 34px "Courier New", monospace';
+      ctx.fillText('SÅGSAND MAYHEM', W/2, H*0.72);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 58px Georgia, serif';
+      ctx.fillText(name, W/2, H*0.80);
+      ctx.font = '44px Georgia, serif';
+      ctx.fillText('klarade jobbet på ' + seconds + ' sekunder', W/2, H*0.87);
+      ctx.fillStyle = '#e8543a';
+      ctx.font = '30px Georgia, serif';
+      ctx.fillText(points + ' poäng · skaneby.github.io/sagsand-mayhem', W/2, H*0.93);
+      cv.toBlob(cb, 'image/jpeg', 0.88);
+    }
+  }
+
+  async function shareResult(){
+    const name = (document.getElementById('playerName').value || 'Okänd skytt').trim();
+    const seconds = totalTime.toFixed(1);
+    composeShareImage(name, seconds, async (blob)=>{
+      if (!blob) return;
+      const file = new File([blob], 'sagsand-mayhem-resultat.jpg', { type:'image/jpeg' });
+      const text = name + ' klarade jobbet på ' + seconds + ' sekunder — Sågsand Mayhem';
+      if (navigator.canShare && navigator.canShare({ files:[file] })){
+        try { await navigator.share({ files:[file], text: text, title:'Sågsand Mayhem' }); return; } catch(e){ /* avbrutet */ }
+      }
+      // Fallback: ladda ner bilden
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'sagsand-mayhem-resultat.jpg';
+      a.click();
+    });
+  }
+  document.getElementById('shareBtn').addEventListener('click', (e)=>{ e.stopPropagation(); shareResult(); });
+
   // ---------- HUD & FLOW ----------
   function updateHud(){
     const lvl = LEVELS[levelIdx];
@@ -1068,17 +1184,21 @@
     if (levelIdx < LEVELS.length - 1){
       setTimeout(()=> showOverlay(
         lvl.name + ' klar!',
-        'Du har ' + points + ' poäng. ' + LEVELS[levelIdx+1].intro,
+        'Tid hittills: ' + fmtTime(totalTime) + ' · ' + points + ' poäng. ' + LEVELS[levelIdx+1].intro,
         'Starta ' + LEVELS[levelIdx+1].name.split(' — ')[0],
         ()=>{ levelIdx++; hits = 0; startLevel(); }
       ), 1200);
     } else {
-      setTimeout(()=> showOverlay(
-        'Spelet klart!',
-        'Viken är återställd till sitt lugn. Slutpoäng: ' + points + ' poäng.',
-        'Spela igen',
-        ()=>{ levelIdx = 0; hits = 0; points = 0; startLevel(); }
-      ), 1200);
+      captureSnapshot(); // frys sista bilden för delningsgrafiken
+      setTimeout(()=>{
+        showOverlay(
+          'Spelet klart!',
+          'Viken är återställd. Din tid: ' + fmtTime(totalTime) + ' (' + totalTime.toFixed(1) + ' sekunder) · ' + points + ' poäng.',
+          'Spela igen',
+          ()=>{ levelIdx = 0; hits = 0; points = 0; totalTime = 0; startLevel(); }
+        );
+        document.getElementById('shareRow').style.display = 'block';
+      }, 1200);
     }
   }
 
@@ -1095,22 +1215,26 @@
     if (!overlayAction) return;
     const fn = overlayAction; overlayAction = null;
     overlay.style.display = 'none';
+    document.getElementById('shareRow').style.display = 'none';
     audioInit();
     startAmbience();
     startEngine();
     fn();
   }
-  overlay.addEventListener('click', overlayGo);
-  overlay.addEventListener('touchend', (e)=>{ e.preventDefault(); overlayGo(); }, { passive:false });
+  const ovBtn = document.getElementById('ovBtn');
+  ovBtn.addEventListener('click', overlayGo);
+  ovBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); overlayGo(); }, { passive:false });
 
   function startLevel(){
     updateHud();
     msgEl.innerHTML = '';
-    gameActive = true;
-    const lvl = LEVELS[levelIdx];
-    for (let i=0; i<lvl.concurrent; i++){
-      setTimeout(()=>{ if (gameActive) spawnOne(jetskis[i]); }, i*800);
-    }
+    runCountdown(()=>{
+      gameActive = true;
+      const lvl = LEVELS[levelIdx];
+      for (let i=0; i<lvl.concurrent; i++){
+        setTimeout(()=>{ if (gameActive) spawnOne(jetskis[i]); }, i*800);
+      }
+    });
   }
 
   // Initial overlay wires to level 1
@@ -1129,6 +1253,8 @@
     const dt = Math.min((now-last)/1000, 0.05);
     last = now;
     if (gameActive){
+      totalTime += dt;
+      timeboxEl.textContent = fmtTime(totalTime);
       updateJetskis(dt);
       // Machine gun autofire while the button is held
       if (LEVELS[levelIdx].weapon === 'mg' && fireHeld){
