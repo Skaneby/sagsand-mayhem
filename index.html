@@ -211,7 +211,8 @@
     </div>
     <div class="btn" id="ovBtn">Starta (med ljud)</div>
     <div class="btn" id="quitBtn" style="display:none; margin-top:12px; border-color:rgba(255,255,255,0.4); color:rgba(255,255,255,0.75);">Avsluta</div>
-    <div id="forceUpd" style="margin-top:20px; font-size:12px; opacity:0.55; text-decoration:underline; letter-spacing:1px; pointer-events:auto;">Sök & tvinga uppdatering</div>
+    <div id="shareApp" style="margin-top:18px; font-size:13px; color:#9fe870; text-decoration:underline; letter-spacing:1px; pointer-events:auto;">Dela appen med en vän</div>
+    <div id="forceUpd" style="margin-top:12px; font-size:12px; opacity:0.55; text-decoration:underline; letter-spacing:1px; pointer-events:auto;">Sök & tvinga uppdatering</div>
   </div>
 </div>
 
@@ -1327,6 +1328,25 @@
 
   const forceUpd = document.getElementById('forceUpd');
   forceUpd.addEventListener('click', (e)=>{ e.stopPropagation(); if (window.sagsandHardRefresh) window.sagsandHardRefresh(); });
+
+  // Share the app itself: opens the system share sheet with the game link (OG preview shows on the receiving end)
+  const shareApp = document.getElementById('shareApp');
+  shareApp.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const url = 'https://skaneby.github.io/sagsand-mayhem/';
+    const text = 'Vattenskotrarna stör lugnet i viken — klarar du att rensa den snabbare än jag? Hemsö Water Scooter Safari:';
+    if (navigator.share){
+      try { await navigator.share({ title:'Hemsö Water Scooter Safari', text: text, url: url }); return; } catch(err){ /* avbrutet */ }
+    }
+    // Reserv: kopiera länken till urklipp
+    try {
+      await navigator.clipboard.writeText(url);
+      shareApp.textContent = 'Länk kopierad!';
+      setTimeout(()=>{ shareApp.textContent = 'Dela appen med en vän'; }, 2000);
+    } catch(err){
+      shareApp.textContent = url; // sista utväg: visa länken
+    }
+  });
 
   // Player name persists in the browser between visits
   const nameInput = document.getElementById('playerName');
