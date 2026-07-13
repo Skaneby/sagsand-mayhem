@@ -89,7 +89,7 @@
     });
   }
 </script>
-<title>Sågsand Mayhem</title>
+<title>Hemsö Water Scooter Safari</title>
 <style>
   html, body { margin:0; padding:0; overflow:hidden; background:#0a1a2a; font-family:'Georgia',serif; height:100%; }
   #scene { width:100vw; height:100vh; position:relative; cursor:crosshair; touch-action:none; }
@@ -138,7 +138,7 @@
 <div id="scene">
   <div id="hud">
     <div id="topbar">
-      <div id="title">Sågsand Mayhem</div>
+      <div id="title">Hemsö Water Scooter Safari</div>
       <div id="scorebox">0 p</div>
       <div id="subscore"></div>
       <div id="timebox" style="font-family:'Courier New',monospace; font-size:16px; margin-top:2px; color:#9fe870; text-shadow:0 0 4px rgba(0,0,0,0.8);">0:00.0</div>
@@ -188,7 +188,7 @@
   <div class="roundbtn" id="zoombtn">&#9906;</div>
   <div class="roundbtn" id="firebtn">SKJUT</div>
   <div id="overlay">
-    <h2>Sågsand Mayhem</h2>
+    <h2>Hemsö Water Scooter Safari</h2>
     <h1 id="ovTitle">Nivå 1 — Kikarsikte</h1>
     <p id="ovText">Fem vattenskotrar stör lugnet vid viken. Dra med fingret för att sikta, tryck på kikarknappen för zoom, och tryck SKJUT (eller snabbtryck på skärmen) för att skjuta.</p>
     <div style="margin-top:18px; pointer-events:auto;">
@@ -1193,7 +1193,7 @@
       ctx.textAlign = 'center';
       ctx.fillStyle = '#9fe870';
       ctx.font = '600 34px "Courier New", monospace';
-      ctx.fillText('SÅGSAND MAYHEM', W/2, H*0.72);
+      ctx.fillText('HEMSÖ WATER SCOOTER SAFARI', W/2, H*0.72);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 58px Georgia, serif';
       ctx.fillText(name, W/2, H*0.80);
@@ -1212,9 +1212,9 @@
     composeShareImage(name, seconds, async (blob)=>{
       if (!blob) return;
       const file = new File([blob], 'sagsand-mayhem-resultat.jpg', { type:'image/jpeg' });
-      const text = name + ' klarade jobbet på ' + seconds + ' sekunder — Sågsand Mayhem';
+      const text = name + ' klarade jobbet på ' + seconds + ' sekunder — Hemsö Water Scooter Safari';
       if (navigator.canShare && navigator.canShare({ files:[file] })){
-        try { await navigator.share({ files:[file], text: text, title:'Sågsand Mayhem' }); return; } catch(e){ /* avbrutet */ }
+        try { await navigator.share({ files:[file], text: text, title:'Hemsö Water Scooter Safari' }); return; } catch(e){ /* avbrutet */ }
       }
       // Fallback: ladda ner bilden
       const a = document.createElement('a');
@@ -1228,7 +1228,7 @@
   // ---------- HUD & FLOW ----------
   function updateHud(){
     const lvl = LEVELS[levelIdx];
-    titleEl.textContent = 'Sågsand Mayhem · ' + lvl.name;
+    titleEl.textContent = 'Hemsö Water Scooter Safari · ' + lvl.name;
     scoreboxEl.textContent = points + ' p';
     subscoreEl.textContent = hits + ' / ' + lvl.quota + ' vattenskotrar';
     hintEl.textContent = lvl.hint;
@@ -1301,7 +1301,7 @@
     window.close(); // fungerar i installerad PWA; webbläsarflikar tillåter det oftast inte
     // Om fönstret inte stängdes: visa en stilla avslutningsskärm
     setTimeout(()=>{
-      overlay.innerHTML = '<h2>Sågsand Mayhem</h2><h1>Tack för idag</h1>' +
+      overlay.innerHTML = '<h2>Hemsö Water Scooter Safari</h2><h1>Tack för idag</h1>' +
         '<p style="opacity:0.75;">Viken vilar. Du kan stänga fliken eller appen nu.</p>';
       overlay.style.display = 'flex';
       overlay.style.cursor = 'default';
