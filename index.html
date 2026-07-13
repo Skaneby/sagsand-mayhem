@@ -1296,6 +1296,16 @@
   const forceUpd = document.getElementById('forceUpd');
   forceUpd.addEventListener('click', (e)=>{ e.stopPropagation(); if (window.sagsandHardRefresh) window.sagsandHardRefresh(); });
 
+  // Player name persists in the browser between visits
+  const nameInput = document.getElementById('playerName');
+  try {
+    const saved = localStorage.getItem('sagsand_player_name');
+    if (saved) nameInput.value = saved;
+  } catch(e){}
+  nameInput.addEventListener('input', ()=>{
+    try { localStorage.setItem('sagsand_player_name', nameInput.value.trim()); } catch(e){}
+  });
+
   function startLevel(){
     updateHud();
     msgEl.innerHTML = '';
