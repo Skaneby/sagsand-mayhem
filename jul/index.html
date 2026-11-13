@@ -51,7 +51,7 @@
   // ---- Versionskoll ----
   // Service workern uppdateras bara när sw.js ändras, så den märker inte en ny jul/index.html.
   // Därför jämför sidan sitt eget bygg-id med version.json (som skrivs om vid varje bygge).
-  var BUILD_ID = '20261113-160043';
+  var BUILD_ID = 'ad32f012f28d';
   function checkVersion(){
     if (updDismissed || location.protocol.indexOf('http') !== 0 || !window.fetch) return;
     fetch('version.json?t=' + Date.now(), { cache:'no-store' })
@@ -1405,7 +1405,10 @@
         let hitPos = null, hitTarget = null;
         if (boss.active && p.distanceTo(bossCenterWorld()) < 11){ hitPos = p.clone(); hitTarget = 'boss'; }
         if (!hitPos) sleds.forEach(j=>{ if (!hitPos && j.alive && p.distanceTo(j.mesh.position) < 8){ hitPos = p.clone(); } });
-        const onIce = p.y < waterY(p.z);
+        // Isytan i spelet är en kon genom kameran, så strax framför oss ligger allt under "ögonhöjd"
+        // räknas som is. Pjäsen startar lite under siktet — kolla därför isträff först när den
+        // har flugit förbi stranden, annars briserar den direkt framför kameran.
+        const onIce = r.traveled > 25 && p.y < waterY(p.z);
         if (hitPos || onIce || r.traveled >= r.targetDist){
           scene.remove(r.mesh); rockets.splice(i,1);
           const at = p.clone();
@@ -1895,7 +1898,7 @@
   });
 
   // Testkrok (används bara vid förhandsgranskning/skärmdumpar)
-  window.__tomte = { sleds, boss, spawnOne, spawnBoss, setLevel:(i)=>{ levelIdx = i; }, camera, applyCamera,
+  window.__tomte = { sleds, boss, rockets, spawnOne, spawnBoss, setLevel:(i)=>{ levelIdx = i; }, camera, applyCamera,
     aim:(y,p,f)=>{ yaw=y; pitch=p; if(f){ fov=f; targetFov=f; } applyCamera(); }, festiveBurst, fireworkBurst, explodeAt,
     killSled, start:()=>{ gameActive = true; } };
 

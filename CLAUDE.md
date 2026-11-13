@@ -117,3 +117,8 @@ Go fix failing CI tests without being told how.
 - /plan
 - /implement
 - /review
+
+# Versionering
+Kör `python3 tools/stamp_version.py` före varje commit som ändrar `index.html` eller `jul/index.html`.
+Skriptet uppdaterar `BUILD_ID` i sidan och `version.json` bredvid — det är så bannern
+"Ny version finns tillgänglig" vet att en ny version är publicerad.

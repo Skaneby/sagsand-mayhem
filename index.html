@@ -41,12 +41,32 @@
     b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:#1c3322;color:#fff;'+
       'display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 12px;'+
       'font:14px Georgia,serif;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
-    b.innerHTML = '<span>Ny uppdatering finns</span>'+
+    b.innerHTML = '<span>Ny version finns tillgänglig</span>'+
       '<button id="updbtn" style="padding:8px 18px;border:1px solid #9fe870;background:transparent;'+
-      'color:#9fe870;font:13px Georgia,serif;letter-spacing:1px;border-radius:3px;">UPPDATERA NU</button>';
+      'color:#9fe870;font:13px Georgia,serif;letter-spacing:1px;border-radius:3px;">UPPDATERA</button>'+
+      '<span id="upddismiss" style="margin-left:4px;opacity:0.6;font-size:18px;cursor:pointer;">&times;</span>';
     document.body.appendChild(b);
     document.getElementById('updbtn').addEventListener('click', forceUpdate);
+    document.getElementById('upddismiss').addEventListener('click', function(){ b.remove(); updDismissed = true; });
   }
+  var updDismissed = false;
+
+  // ---- Versionskoll ----
+  // Service workern uppdateras bara när sw.js ändras, så den märker inte en ny index.html.
+  // Därför jämför sidan sitt eget bygg-id med version.json. Båda skrivs av tools/stamp_version.py.
+  var BUILD_ID = '3571fc16e05e';
+  function checkVersion(){
+    if (updDismissed || location.protocol.indexOf('http') !== 0 || !window.fetch) return;
+    fetch('version.json?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){ if (v && v.build && v.build !== BUILD_ID) showUpdateBanner(); })
+      .catch(function(){});
+  }
+  window.addEventListener('load', function(){
+    checkVersion();
+    setInterval(checkVersion, 60000);
+    document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkVersion(); });
+  });
   function forceUpdate(){
     // Tvingar in nya versionen: be väntande worker ta över, töm cachen, ladda om förbi allt
     var done = false;
