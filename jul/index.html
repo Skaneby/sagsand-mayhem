@@ -38,12 +38,32 @@
     b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:#5a0f14;color:#fff;'+
       'display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 12px;'+
       'font:14px Georgia,serif;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
-    b.innerHTML = '<span>Ny uppdatering finns</span>'+
+    b.innerHTML = '<span>Ny version finns tillgänglig</span>'+
       '<button id="updbtn" style="padding:8px 18px;border:1px solid #ffd27a;background:transparent;'+
-      'color:#ffd27a;font:13px Georgia,serif;letter-spacing:1px;border-radius:3px;">UPPDATERA NU</button>';
+      'color:#ffd27a;font:13px Georgia,serif;letter-spacing:1px;border-radius:3px;">UPPDATERA</button>'+
+      '<span id="upddismiss" style="margin-left:4px;opacity:0.6;font-size:18px;cursor:pointer;">&times;</span>';
     document.body.appendChild(b);
     document.getElementById('updbtn').addEventListener('click', forceUpdate);
+    document.getElementById('upddismiss').addEventListener('click', function(){ b.remove(); updDismissed = true; });
   }
+  var updDismissed = false;
+
+  // ---- Versionskoll ----
+  // Service workern uppdateras bara när sw.js ändras, så den märker inte en ny jul/index.html.
+  // Därför jämför sidan sitt eget bygg-id med version.json (som skrivs om vid varje bygge).
+  var BUILD_ID = '20261113-160043';
+  function checkVersion(){
+    if (updDismissed || location.protocol.indexOf('http') !== 0 || !window.fetch) return;
+    fetch('version.json?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){ if (v && v.build && v.build !== BUILD_ID) showUpdateBanner(); })
+      .catch(function(){});
+  }
+  window.addEventListener('load', function(){
+    checkVersion();
+    setInterval(checkVersion, 60000);
+    document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkVersion(); });
+  });
   function forceUpdate(){
     var done = false;
     function reload(){ if (done) return; done = true; location.reload(); }
@@ -1559,13 +1579,24 @@
     const jitter = quiet ? 0.02 : 0;
     const ndc = new THREE.Vector2((Math.random()-0.5)*jitter*2, (Math.random()-0.5)*jitter*2);
     raycaster.setFromCamera(ndc, camera);
-    let hit = false;
+    let hit = false, hitPoint = null;
     sleds.forEach(j=>{
       if (hit || !j.alive) return;
       const dist = raycaster.ray.distanceToPoint(j.mesh.position);
       const hitRadius = 3.4 * (fov/60) + 1.6;
-      if (dist < hitRadius){ killSled(j, true); hit = true; }
+      if (dist < hitRadius){ hitPoint = j.mesh.position.clone().add(new THREE.Vector3(0,1.2,0)); killSled(j, true); hit = true; }
     });
+    // Kulsprutan: mynningsflamma + spårljus mot träffpunkten (eller dit kulan tar vägen)
+    if (quiet){
+      muzzleFlash();
+      let end = hitPoint;
+      if (!end){
+        const d = raycaster.ray.direction;
+        const t = d.y < -0.004 ? Math.min(140, -7 / d.y) : 150;
+        end = d.clone().multiplyScalar(t);
+      }
+      spawnTracer(end);
+    }
     if (hit) checkLevelDone();
     else {
       // Missen yr upp snö där kulan slår ner i isen
@@ -1577,6 +1608,76 @@
       }
       chevron.setAttribute('fill', 'rgba(255,255,255,0.95)');
       setTimeout(()=> chevron.setAttribute('fill', 'rgba(232,60,58,0.95)'), 90);
+    }
+  }
+
+  // ---------- MYNNINGSFLAMMA & SPÅRLJUS (kulsprutan) ----------
+  // Kameran läggs i scenen så att mynningsflamman kan sitta fast i den, nere till höger i bild.
+  scene.add(camera);
+  const MUZZLE_LOCAL = new THREE.Vector3(0.34, -0.3, -1.0);
+  const flashOuter = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, color:0xff9a3a, blending:THREE.AdditiveBlending, depthTest:false, depthWrite:false, transparent:true, fog:false }));
+  const flashCore  = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, color:0xfff4d6, blending:THREE.AdditiveBlending, depthTest:false, depthWrite:false, transparent:true, fog:false }));
+  [flashOuter, flashCore].forEach(f=>{ f.position.copy(MUZZLE_LOCAL); f.renderOrder = 999; f.visible = false; camera.add(f); });
+  let flashT = 0;
+  function muzzleFlash(){
+    flashT = 0.08;
+    // Slumpad storlek och vridning så att varje flamma ser olika ut
+    const s = rnd(0.45, 0.7);
+    flashOuter.scale.setScalar(s); flashCore.scale.setScalar(s*0.45);
+    flashOuter.material.rotation = Math.random()*Math.PI;
+    flashOuter.visible = flashCore.visible = true;
+    // Liten rekyl: siktet hoppar uppåt en aning och glider tillbaka
+    pitch = clamp(pitch + 0.0025*(fov/60), pitchDownLim, pitchUpLim); applyCamera();
+  }
+  function updateMuzzle(dt){
+    if (flashT <= 0) return;
+    flashT -= dt;
+    const k = Math.max(0, flashT/0.08);
+    flashOuter.material.opacity = k; flashCore.material.opacity = k;
+    if (flashT <= 0) flashOuter.visible = flashCore.visible = false;
+  }
+
+  // Spårljus: ett glödande huvud med en kort svans som flyger från mynningen till målet.
+  // Huvudets storlek skalas med avståndet så att det syns lika tydligt nära som långt bort.
+  const tracers = [];
+  const TRACER_SPEED = 300, TRACER_LEN = 22, TRACER_BEADS = 7;
+  function spawnTracer(end){
+    const start = camera.localToWorld(MUZZLE_LOCAL.clone());
+    const dir = new THREE.Vector3().subVectors(end, start);
+    const total = dir.length(); dir.normalize();
+    const geo = new THREE.BufferGeometry().setFromPoints([start.clone(), start.clone()]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color:0xffc65a, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false, fog:false }));
+    // Huvud + en rad glödande "pärlor" bakåt som bildar en strimma (en vanlig linje är bara 1 px bred)
+    const beads = [];
+    for (let k=0;k<TRACER_BEADS;k++){
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, color: k===0 ? 0xfff0c0 : 0xffb347, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, fog:false, opacity: 1 - k/TRACER_BEADS }));
+      scene.add(sp); beads.push(sp);
+    }
+    scene.add(line);
+    tracers.push({ start, dir, total, travelled:0, line, beads });
+  }
+  function updateTracers(dt){
+    const camPos = camera.position;
+    for (let i=tracers.length-1; i>=0; i--){
+      const t = tracers[i];
+      t.travelled += TRACER_SPEED*dt;
+      const hd = Math.min(t.travelled, t.total);
+      const headPos = t.start.clone().addScaledVector(t.dir, hd);
+      const tailPos = t.start.clone().addScaledVector(t.dir, Math.max(0, hd - TRACER_LEN));
+      const pos = t.line.geometry.attributes.position;
+      pos.setXYZ(0, tailPos.x, tailPos.y, tailPos.z); pos.setXYZ(1, headPos.x, headPos.y, headPos.z);
+      pos.needsUpdate = true;
+      t.beads.forEach((sp,k)=>{
+        sp.position.copy(t.start).addScaledVector(t.dir, Math.max(0, hd - k*TRACER_LEN/TRACER_BEADS));
+        sp.scale.setScalar((0.05 + sp.position.distanceTo(camPos)*0.016) * (1 - k*0.08));
+      });
+      if (t.travelled >= t.total){
+        // Liten gnista där spårljuset tar slut
+        emit(glowPool, { pos:headPos, size:1.2, life:0.18, color:0xffd27a, tex:glowTex });
+        scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose();
+        t.beads.forEach(sp=>{ scene.remove(sp); sp.material.dispose(); });
+        tracers.splice(i,1);
+      }
     }
   }
 
@@ -1822,6 +1923,8 @@
     updatePool(puffPool, dt, now);
     updateDebris(dt, now);
     updateRings(dt);
+    updateMuzzle(dt);
+    updateTracers(dt);
     renderer.render(scene, camera);
   }
   requestAnimationFrame(animate);
